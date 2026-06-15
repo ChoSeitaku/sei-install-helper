@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>装了吗 - 软件安装助手</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', system-ui, sans-serif; background: #faf9f7; min-height: 100vh; color: #2d2a26; }
+        .card { background: white; border: 1px solid #ebe7e0; border-radius: 12px; transition: all 0.2s ease; overflow: hidden; }
+        .card-hover:hover { border-color: #d9a48a; box-shadow: 0 8px 24px rgba(0,0,0,0.06); transform: translateY(-2px); }
+        .btn-primary { background: #cc8566; color: white; transition: all 0.2s ease; }
+        .btn-primary:hover { background: #bf6d4d; box-shadow: 0 4px 12px rgba(204,133,102,0.3); }
+        .btn-primary:active { transform: scale(0.98); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-secondary { background: #f5f3ef; color: #5e544a; border: 1px solid #ebe7e0; }
+        .btn-secondary:hover { background: #ebe7e0; }
+        .platform-btn { padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 500; transition: all 0.2s ease; display: flex; align-items: center; gap: 0.5rem; background: #f5f3ef; color: #726558; border: 1px solid #ebe7e0; }
+        .platform-btn.active { background: #cc8566; color: white; border-color: #cc8566; }
+        .platform-btn:not(.active):hover { background: #ebe7e0; }
+        .version-btn { padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 500; transition: all 0.2s ease; background: #f5f3ef; color: #726558; border: 1px solid #ebe7e0; }
+        .version-btn.active { background: #cc8566; color: white; border-color: #cc8566; }
+        .version-btn:not(.active):hover { background: #ebe7e0; }
+        .search-dropdown { position: absolute; top: calc(100% + 8px); left: 0; right: 0; background: white; border: 1px solid #ebe7e0; border-radius: 12px; overflow: hidden; z-index: 50; max-height: 360px; overflow-y: auto; box-shadow: 0 12px 32px rgba(0,0,0,0.08); display: none; }
+        .search-dropdown.show { display: block; }
+        .search-item { padding: 0.875rem 1rem; cursor: pointer; transition: background 0.15s ease; display: flex; align-items: center; gap: 0.875rem; }
+        .search-item:hover { background: #fdf8f6; }
+        .search-item + .search-item { border-top: 1px solid #f5f3ef; }
+        .code-block { margin: 1rem 0; border-radius: 10px; overflow: hidden; border: 1px solid #ebe7e0; }
+        .code-header { background: #2d2a26; padding: 0.625rem 1rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.8125rem; color: #a69480; }
+        .code-content { background: #1e1c1a; padding: 1rem; overflow-x: auto; max-width: 100%; }
+        .code-content pre { margin: 0; white-space: pre; background: transparent !important; }
+        .code-content code { font-family: 'JetBrains Mono', monospace; font-size: 0.8125rem; line-height: 1.6; white-space: pre; background: transparent !important; color: #abb2bf !important; }
+        .code-content code .hljs-keyword, .code-content code .hljs-built_in { color: #c678dd !important; }
+        .code-content code .hljs-string, .code-content code .hljs-attr { color: #98c379 !important; }
+        .code-content code .hljs-comment { color: #5c6370 !important; font-style: italic; }
+        .code-content code .hljs-number, .code-content code .hljs-literal { color: #d19a66 !important; }
+        .code-content code .hljs-function, .code-content code .hljs-title { color: #61afef !important; }
+        .code-content code .hljs-variable, .code-content code .hljs-template-variable { color: #e06c75 !important; }
+        .toast { position: fixed; bottom: 5rem; right: 1.5rem; padding: 0.875rem 1.25rem; border-radius: 10px; font-weight: 500; font-size: 0.875rem; z-index: 1000; animation: toastIn 0.3s ease; box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+        .toast.success { background: #2d7a4f; color: white; }
+        .toast.error { background: #c44b3f; color: white; }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .markdown-body { overflow-wrap: break-word; word-wrap: break-word; }
+        .markdown-body h1 { font-size: 1.5rem; font-weight: 700; margin: 1.5rem 0 1rem; color: #2d2a26; }
+        .markdown-body h2 { font-size: 1.25rem; font-weight: 600; margin: 1.25rem 0 0.75rem; color: #a85a40; }
+        .markdown-body h3 { font-size: 1.125rem; font-weight: 600; margin: 1rem 0 0.5rem; color: #5e544a; }
+        .markdown-body p { margin: 0.75rem 0; line-height: 1.75; color: #5e544a; }
+        .markdown-body ul, .markdown-body ol { margin: 0.75rem 0; padding-left: 1.5rem; color: #5e544a; }
+        .markdown-body li { margin: 0.375rem 0; }
+        .markdown-body strong { color: #a85a40; font-weight: 600; }
+        .markdown-body code:not([class*="language-"]) { background: #f5f3ef; padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.875em; color: #8a4a36; border: 1px solid #ebe7e0; }
+        .markdown-body hr { border: none; border-top: 1px solid #ebe7e0; margin: 1.5rem 0; }
+        .markdown-body table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        .markdown-body th, .markdown-body td { padding: 0.5rem 0.75rem; border: 1px solid #ebe7e0; text-align: left; }
+        .markdown-body th { background: #f5f3ef; font-weight: 600; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #ddd6cb; border-radius: 3px; }
+        *:focus-visible { outline: 2px solid #cc8566; outline-offset: 2px; }
+        .spinner { width: 1.25rem; height: 1.25rem; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .fade-in { animation: fadeIn 0.25s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .slide-up { animation: slideUp 0.25s ease; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <header style="background: rgba(250,249,247,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid #ebe7e0;" class="sticky top-0 z-40">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div style="background: #cc8566;" class="w-10 h-10 sm:w-11 sm:h-11 rounded-lg flex items-center justify-center text-lg font-bold text-white shadow-sm">装</div>
+                    <div>
+                        <h1 class="text-lg font-bold" style="color: #2d2a26;">装了吗</h1>
+                        <p class="text-xs hidden sm:block" style="color: #a69480;">今天你装了吗？</p>
+                    </div>
+                </div>
+                <div id="platform-selector" class="flex gap-2"></div>
+            </div>
+        </header>
+        
+        <main class="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8" style="padding-bottom: 6rem;">
+            <div class="relative mb-8" id="search-box">
+                <form id="search-form" class="flex gap-3">
+                    <div class="flex-1 relative">
+                        <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none" style="color: #a69480;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        <input type="text" id="search-input" placeholder="搜索软件... 例如: node, python, docker" class="w-full pl-12 pr-4 py-4 rounded-xl focus:outline-none focus:ring-2 transition-all" style="background: white; border: 1px solid #ebe7e0; color: #2d2a26;">
+                    </div>
+                    <button type="submit" class="btn-primary px-6 py-4 rounded-xl font-medium flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        <span>搜索</span>
+                    </button>
+                </form>
+                <div id="search-results" class="search-dropdown"></div>
+            </div>
+            <div id="content-area"></div>
+        </main>
+        
+        <footer class="fixed bottom-0 left-0 right-0" style="background: rgba(250,249,247,0.95); backdrop-filter: blur(12px); border-top: 1px solid #ebe7e0;">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between text-sm" style="color: #a69480;">
+                <p>v1.0.0 <span id="platform-badge" class="ml-2 px-2 py-0.5 rounded text-xs" style="background:#f5f3ef;border:1px solid #ebe7e0;"></span></p>
+                <p class="hidden sm:block">搜索 → 选版本 → 生成方案</p>
+            </div>
+        </footer>
+        <div id="toast-container"></div>
+    </div>
+
+    <script>
+    var API = window.location.origin;
+    var isElectron = window.electronAPI !== undefined;
+    var currentPlatform = 'windows';
+    
+    var state = {
+        platform: 'windows',
+        searchQuery: '',
+        searchResults: [],
+        showResults: false,
+        selectedSoftware: null,
+        versions: [],
+        selectedVersion: null,
+        currentPlan: null,
+        isGenerating: false,
+        copiedScript: null,
+        feedbackGiven: {},
+        presetSoftware: [],
+        isExecuting: false,
+        executionLogs: []
+    };
+
+    var icons = {
+        runtime: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>',
+        tools: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>',
+        editor: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>',
+        devops: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>',
+        database: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>',
+        package: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>',
+        default: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>'
+    };
+
+    function getIcon(cat) { return icons[cat] || icons.default; }
+    function esc(text) { var d = document.createElement('div'); d.textContent = text; return d.innerHTML; }
+
+    function showToast(msg, type) {
+        type = type || 'success';
+        var t = document.createElement('div');
+        t.className = 'toast ' + type;
+        t.textContent = msg;
+        document.getElementById('toast-container').appendChild(t);
+        setTimeout(function() { t.remove(); }, 3500);
+    }
+
+    function api(path, opts) {
+        opts = opts || {};
+        return fetch(API + path, {
+            headers: Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {}),
+            method: opts.method || 'GET',
+            body: opts.body
+        }).then(function(r) {
+            if (!r.ok) throw new Error('API error: ' + r.status);
+            return r.json();
+        });
+    }
+
+    // Init
+    function init() {
+        // Auto-detect platform from Electron
+        if (isElectron) {
+            window.electronAPI.getPlatform().then(function(info) {
+                currentPlatform = info.platform;
+                state.platform = info.platform;
+                updatePlatformButtons();
+                var badge = document.getElementById('platform-badge');
+                if (badge) badge.textContent = info.label + ' ' + info.arch;
+                console.log('Platform detected:', info.label, info.arch);
+            });
+            
+            // Listen for script output
+            window.electronAPI.onScriptOutput(function(data) {
+                state.executionLogs.push('[' + data.type + '] ' + data.data);
+                renderContent();
+            });
+            
+            // Check server connection
+            window.electronAPI.checkServer().then(function(connected) {
+                if (!connected) {
+                    showToast('未连接到服务端，请先启动服务端', 'error');
+                }
+            });
+        }
+
+        // Update platform badge
+        var badge = document.getElementById('platform-badge');
+        if (badge) {
+            badge.textContent = isElectron ? 'Electron' : 'Web';
+        }
+
+        var platforms = [
+            { id: 'windows', label: 'Windows', icon: '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>' },
+            { id: 'mac', label: 'macOS', icon: '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>' },
+            { id: 'linux', label: 'Linux', icon: '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12.504 0c-.155 0-.311.015-.466.045C9.992.377 8.385 2.3 8.385 4.588v2.09H6.73c-.887 0-1.607.72-1.607 1.607v3.69c1.268-.135 2.535-.135 3.803 0V12.83c.396 0 .787-.053 1.165-.153.628-.168 1.183-.508 1.598-.97a4.075 4.075 0 00.65-1.445c.067-.3.103-.613.103-.93V6.195c0-.317-.033-.63-.1-.93-.187-.825-.663-1.533-1.315-1.975a3.034 3.034 0 00-.62-.323 2.41 2.41 0 00-.41-.125c-.06-.013-.12-.022-.182-.025V2.568c0-1.075-.397-2.075-1.075-2.855-.075-.087-.155-.17-.24-.25-.31-.29-.68-.52-1.09-.66a3.64 3.64 0 00-.53-.13c-.115-.015-.23-.022-.345-.022h-.21zm.48 1.98c.14 0 .28.03.41.09.27.12.5.3.68.53.34.44.55 1.02.55 1.65v1.15H9.78V4.16c0-.76.33-1.43.85-1.88.18-.16.39-.28.62-.35.12-.04.24-.06.36-.07v.32z"/></svg>' }
+        ];
+        var phtml = '';
+        for (var i = 0; i < platforms.length; i++) {
+            var p = platforms[i];
+            phtml += '<button onclick="setPlatform(\'' + p.id + '\')" data-platform="' + p.id + '" class="platform-btn' + (state.platform === p.id ? ' active' : '') + '">' + p.icon + '<span class="hidden sm:inline">' + p.label + '</span></button>';
+        }
+        document.getElementById('platform-selector').innerHTML = phtml;
+
+        document.getElementById('search-form').onsubmit = function(e) {
+            e.preventDefault();
+            doSearch();
+        };
+        document.getElementById('search-input').oninput = function(e) {
+            state.searchQuery = e.target.value;
+        };
+        document.getElementById('search-input').onkeydown = function(e) {
+            if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
+        };
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#search-box')) {
+                document.getElementById('search-results').classList.remove('show');
+                state.showResults = false;
+            }
+        });
+
+        api('/api/software?limit=200').then(function(data) {
+            state.presetSoftware = data.results || [];
+            renderContent();
+        });
+    }
+
+    function setPlatform(p) {
+        state.platform = p;
+        updatePlatformButtons();
+    }
+
+    function updatePlatformButtons() {
+        var btns = document.querySelectorAll('.platform-btn');
+        btns.forEach(function(b) {
+            b.classList.remove('active');
+            if (b.dataset.platform === state.platform) {
+                b.classList.add('active');
+            }
+        });
+    }
+
+    function doSearch() {
+        var q = document.getElementById('search-input').value.trim();
+        if (!q) return;
+        state.searchQuery = q;
+
+        api('/api/search', {
+            method: 'POST',
+            body: JSON.stringify({ query: q, platform: state.platform })
+        }).then(function(data) {
+            state.searchResults = data.results || [];
+            state.showResults = true;
+            renderSearchResults();
+        }).catch(function(err) {
+            console.error('Search error:', err);
+            showToast('搜索失败: ' + err.message, 'error');
+        });
+    }
+
+    function renderSearchResults() {
+        var el = document.getElementById('search-results');
+        if (!state.showResults || state.searchResults.length === 0) {
+            el.classList.remove('show');
+            el.innerHTML = '';
+            return;
+        }
+        var html = '';
+        for (var i = 0; i < state.searchResults.length; i++) {
+            var sw = state.searchResults[i];
+            html += '<div class="search-item" onclick="selectSoftware(' + sw.id + ')">';
+            html += '<div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style="background: #fdf8f6;"><span style="color: #cc8566;">' + getIcon(sw.category) + '</span></div>';
+            html += '<div class="min-w-0"><div class="font-medium" style="color: #2d2a26;">' + esc(sw.display_name) + '</div>';
+            html += '<div class="text-sm truncate" style="color: #a69480;">' + esc(sw.description) + '</div></div></div>';
+        }
+        el.innerHTML = html;
+        el.classList.add('show');
+    }
+
+    function selectSoftware(id) {
+        var sw = null;
+        for (var i = 0; i < state.presetSoftware.length; i++) {
+            if (state.presetSoftware[i].id === id) { sw = state.presetSoftware[i]; break; }
+        }
+        if (!sw) for (var i = 0; i < state.searchResults.length; i++) {
+            if (state.searchResults[i].id === id) { sw = state.searchResults[i]; break; }
+        }
+        if (!sw) return;
+
+        state.selectedSoftware = sw;
+        state.searchResults = [];
+        state.showResults = false;
+        state.searchQuery = '';
+        state.currentPlan = null;
+        state.versions = [];
+        document.getElementById('search-input').value = '';
+        document.getElementById('search-results').classList.remove('show');
+
+        renderContent();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        // Fetch versions from source
+        api('/api/software/' + sw.id + '/versions/fetch', { method: 'POST' }).then(function(data) {
+            state.versions = data.results || [];
+            state.selectedVersion = state.versions.find(function(v) { return v.is_stable; }) || state.versions[0] || null;
+            renderContent();
+        });
+    }
+
+    function goBack() {
+        state.selectedSoftware = null;
+        state.currentPlan = null;
+        state.versions = [];
+        renderContent();
+    }
+
+    function selectVersion(id) {
+        for (var i = 0; i < state.versions.length; i++) {
+            if (state.versions[i].id === id) { state.selectedVersion = state.versions[i]; break; }
+        }
+        renderContent();
+    }
+
+    function generatePlan() {
+        if (!state.selectedSoftware) return;
+        state.isGenerating = true;
+        renderContent();
+
+        api('/api/plans/generate', {
+            method: 'POST',
+            body: JSON.stringify({
+                software_id: state.selectedSoftware.id,
+                version: state.selectedVersion ? state.selectedVersion.version : null,
+                platform: state.platform
+            })
+        }).then(function(data) {
+            state.currentPlan = data;
+            state.isGenerating = false;
+            renderContent();
+            showToast('安装方案已生成!');
+        }).catch(function(err) {
+            state.isGenerating = false;
+            renderContent();
+            showToast('生成失败: ' + err.message, 'error');
+        });
+    }
+
+    function copyScript(id, type) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        // Get clean text - decode any HTML entities
+        var text = el.innerText || el.textContent;
+        // Decode HTML entities
+        var txt = document.createElement('textarea');
+        txt.innerHTML = text;
+        text = txt.value;
+        
+        if (isElectron) {
+            state.isExecuting = true;
+            renderContent();
+            
+            window.electronAPI.executeScript(text, type).then(function(result) {
+                state.isExecuting = false;
+                renderContent();
+                showToast('脚本已在终端中执行');
+            }).catch(function(err) {
+                state.isExecuting = false;
+                renderContent();
+                showToast('执行失败: ' + err, 'error');
+            });
+        } else {
+            navigator.clipboard.writeText(text).then(function() {
+                state.copiedScript = type;
+                renderContent();
+                setTimeout(function() { state.copiedScript = null; renderContent(); }, 2000);
+                showToast('已复制到剪贴板');
+            });
+        }
+    }
+
+    function showScriptModal(script, type) {
+        var lang = type === 'powershell' ? 'PowerShell' : 'Bash';
+        var cmd = type === 'powershell' ? 'powershell' : 'bash';
+        
+        var modal = document.createElement('div');
+        modal.id = 'script-modal';
+        modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;';
+        modal.onclick = function(e) { if (e.target === modal) closeModal(); };
+        
+        var content = document.createElement('div');
+        content.style.cssText = 'background:white;border-radius:12px;padding:24px;max-width:700px;width:90%;max-height:80vh;overflow:auto;';
+        content.innerHTML = 
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">' +
+            '<h3 style="font-size:18px;font-weight:600;color:#2d2a26;">复制脚本到终端执行</h3>' +
+            '<button onclick="closeModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#999;">&times;</button>' +
+            '</div>' +
+            '<div style="background:#f5f3ef;border:1px solid #ebe7e0;border-radius:8px;padding:12px;margin-bottom:16px;">' +
+            '<p style="font-size:14px;color:#5e544a;margin:0 0 8px 0;"><strong>打开终端，输入以下命令：</strong></p>' +
+            '<code style="background:#ebe7e0;padding:4px 8px;border-radius:4px;font-size:13px;">' + cmd + '</code>' +
+            '</div>' +
+            '<pre id="script-code" style="background:#1e1c1a;color:#abb2bf;padding:16px;border-radius:8px;overflow-x:auto;font-size:13px;line-height:1.5;max-height:400px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;"></pre>' +
+            '<div style="display:flex;gap:8px;margin-top:16px;">' +
+            '<button onclick="copyModalScript()" id="copy-modal-btn" style="flex:1;padding:12px;background:#cc8566;color:white;border:none;border-radius:8px;font-weight:500;cursor:pointer;">复制脚本</button>' +
+            '<button onclick="closeModal()" style="padding:12px;background:#f5f3ef;color:#5e544a;border:1px solid #ebe7e0;border-radius:8px;cursor:pointer;">关闭</button>' +
+            '</div>';
+        
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+        
+        var codeEl = document.getElementById('script-code');
+        if (codeEl) codeEl.textContent = script;
+        
+        window._modalScript = script;
+    }
+
+    function closeModal() {
+        var modal = document.getElementById('script-modal');
+        if (modal) modal.remove();
+    }
+
+    function copyModalScript() {
+        if (window._modalScript) {
+            navigator.clipboard.writeText(window._modalScript).then(function() {
+                var btn = document.getElementById('copy-modal-btn');
+                if (btn) {
+                    btn.textContent = '已复制!';
+                    btn.style.background = '#16a34a';
+                    setTimeout(function() {
+                        btn.textContent = '复制脚本';
+                        btn.style.background = '#cc8566';
+                    }, 2000);
+                }
+            });
+        }
+    }
+
+    function submitFeedback(planId, isValid) {
+        var key = (isValid ? 'valid_' : 'invalid_') + planId;
+        if (state.feedbackGiven[key]) return;
+        api('/api/feedback', {
+            method: 'POST',
+            body: JSON.stringify({ software_id: state.selectedSoftware.id, plan_id: planId, is_valid: isValid, platform: state.platform })
+        }).then(function() {
+            state.feedbackGiven[key] = true;
+            renderContent();
+            showToast(isValid ? '感谢反馈!' : '已记录');
+        });
+    }
+
+    function openDownload() {
+        var sw = state.selectedSoftware;
+        if (!sw) return;
+        var urls = { node:'https://nodejs.org/', python:'https://www.python.org/downloads/', git:'https://git-scm.com/downloads', docker:'https://www.docker.com/get-started', vscode:'https://code.visualstudio.com/download', chrome:'https://www.google.com/chrome/' };
+        var url = urls[sw.name];
+        if (url) {
+            if (isElectron) {
+                window.electronAPI.openExternal(url);
+            } else {
+                window.open(url, '_blank');
+            }
+        } else {
+            showToast('暂无官方下载链接', 'error');
+        }
+    }
+
+    function renderMarkdown(md) {
+        if (!md) return '';
+        
+        // Clean ANSI escape codes
+        md = md.replace(/\x1b\[[0-9;]*m/g, '');
+        
+        var html = marked.parse(md);
+        
+        // Wrap <pre><code> blocks with our styled code-block
+        html = html.replace(/<pre><code(?: class="language-(\w+)")?>([\s\S]*?)<\/code><\/pre>/g, function(match, lang, code) {
+            lang = lang || 'bash';
+            var type = lang === 'powershell' || lang === 'ps1' ? 'powershell' : 'bash';
+            var id = 'code_' + Math.random().toString(36).substr(2, 9);
+            var codeStr = code.replace(/<[^>]*>/g, '').trim();
+            var copied = state.copiedScript === type;
+            var h = '<div class="code-block"><div class="code-header"><span>' + lang + '</span>';
+            var btnLabel = isElectron ? '一键安装' : '复制';
+            var btnColor = isElectron ? 'background:rgba(16,185,129,0.2);color:#34d399;' : 'background:rgba(255,255,255,0.1);';
+            var btnIcon = isElectron ? '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' : '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>';
+            h += '<button onclick="copyScript(\'' + id + '\',\'' + type + '\')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors" style="' + btnColor + '">';
+            if (copied) { h += '<svg class="w-4 h-4" style="color:#4ade80;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg><span style="color:#4ade80;">已复制</span>'; }
+            else { h += btnIcon + '<span>' + btnLabel + '</span>'; }
+            h += '</button></div><div class="code-content"><pre><code id="' + id + '" class="language-' + lang + '">' + codeStr + '</code></pre></div></div>';
+            return h;
+        });
+        
+        return html;
+    }
+
+    function renderContent() {
+        var area = document.getElementById('content-area');
+        if (!state.selectedSoftware) {
+            var html = '<div class="fade-in"><h2 class="text-lg font-semibold mb-5 flex items-center gap-2" style="color:#2d2a26;">';
+            html += '<svg class="w-5 h-5" style="color:#cc8566;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>';
+            html += '热门软件</h2><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">';
+            for (var i = 0; i < state.presetSoftware.length; i++) {
+                var sw = state.presetSoftware[i];
+                html += '<button onclick="selectSoftware(' + sw.id + ')" class="card card-hover p-4 text-left">';
+                html += '<div class="flex items-center gap-3 mb-3"><div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style="background:#fdf8f6;"><span style="color:#cc8566;">' + getIcon(sw.category) + '</span></div>';
+                html += '<div class="min-w-0"><div class="font-semibold truncate" style="color:#2d2a26;">' + esc(sw.display_name) + '</div><div class="text-xs" style="color:#a69480;">' + esc(sw.category) + '</div></div></div>';
+                html += '<p class="text-sm line-clamp-2" style="color:#726558;">' + esc(sw.description) + '</p></button>';
+            }
+            html += '</div></div>';
+            area.innerHTML = html;
+        } else {
+            var sw = state.selectedSoftware;
+            var html = '<div class="space-y-6 slide-up"><div class="card p-6"><div class="flex items-start justify-between gap-4"><div class="flex items-center gap-4">';
+            html += '<div class="w-14 h-14 rounded-xl flex items-center justify-center text-2xl font-bold text-white flex-shrink-0" style="background:#cc8566;">' + esc(sw.display_name.charAt(0)) + '</div>';
+            html += '<div><h2 class="text-xl sm:text-2xl font-bold" style="color:#2d2a26;">' + esc(sw.display_name) + '</h2>';
+            html += '<p style="color:#726558;margin-top:4px;">' + esc(sw.description) + '</p>';
+            html += '<div class="flex gap-2 mt-2"><span class="px-2.5 py-1 rounded-md text-xs font-medium" style="background:#fdf8f6;color:#8a4a36;border:1px solid #ebe7e0;">' + esc(sw.source_type) + '</span>';
+            html += '<span class="px-2.5 py-1 rounded-md text-xs font-medium" style="background:#fdf8f6;color:#8a4a36;border:1px solid #ebe7e0;">' + esc(sw.category) + '</span></div></div></div>';
+            html += '<button onclick="goBack()" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium flex-shrink-0">返回</button></div>';
+            var dl = ['node','python','git','docker','vscode','chrome'];
+            if (dl.indexOf(sw.name) !== -1) {
+                html += '<button onclick="openDownload()" class="mt-4 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;">';
+                html += '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>官方下载</button>';
+            }
+            html += '</div>';
+            if (state.versions.length > 0) {
+                html += '<div class="card p-6"><h3 class="font-semibold mb-4 flex items-center gap-2" style="color:#2d2a26;">';
+                html += '<svg class="w-5 h-5" style="color:#cc8566;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>';
+                html += '选择版本</h3><div class="flex flex-wrap gap-2">';
+                for (var i = 0; i < state.versions.length; i++) {
+                    var v = state.versions[i];
+                    html += '<button onclick="selectVersion(' + v.id + ')" class="version-btn' + (state.selectedVersion && state.selectedVersion.id === v.id ? ' active' : '') + '">v' + esc(v.version) + '</button>';
+                }
+                html += '</div></div>';
+            }
+            html += '<button onclick="generatePlan()" class="btn-primary w-full py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-2" ' + (state.isGenerating ? 'disabled' : '') + '>';
+            if (state.isGenerating) { html += '<div class="spinner"></div><span>AI 正在生成安装方案...</span>'; }
+            else { html += '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg><span>一键生成安装方案</span>'; }
+            html += '</button>';
+            if (state.currentPlan) {
+                html += '<div class="card p-6 slide-up"><div class="flex items-center justify-between mb-6">';
+                html += '<h3 class="font-semibold flex items-center gap-2" style="color:#2d2a26;">';
+                html += '<svg class="w-5 h-5" style="color:#16a34a;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>';
+                html += '安装方案</h3><div class="flex items-center gap-2">';
+                var pid = state.currentPlan.plan_id;
+                var gv = state.feedbackGiven['valid_' + pid];
+                var gi = state.feedbackGiven['invalid_' + pid];
+                html += '<button onclick="submitFeedback(' + pid + ',true)" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium" style="background:' + (gv ? '#f0fdf4' : '#f5f3ef') + ';color:' + (gv ? '#16a34a' : '#726558') + ';border:1px solid ' + (gv ? '#bbf7d0' : '#ebe7e0') + ';">';
+                html += '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"/></svg>有效</button>';
+                html += '<button onclick="submitFeedback(' + pid + ',false)" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium" style="background:' + (gi ? '#fef2f2' : '#f5f3ef') + ';color:' + (gi ? '#dc2626' : '#726558') + ';border:1px solid ' + (gi ? '#fecaca' : '#ebe7e0') + ';">';
+                html += '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018c.163 0 .326.02.485.06L17 4m-7 10v2a2 2 0 002 2h.095c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5"/></svg>无效</button>';
+                html += '</div></div>';
+                html += '<div class="markdown-body">' + renderMarkdown(state.currentPlan.plan_content) + '</div>';
+                
+                // Show execution logs if any
+                if (state.executionLogs.length > 0) {
+                    html += '<div class="mt-4 p-4 rounded-lg" style="background:#1e1c1a; border:1px solid #ebe7e0;">';
+                    html += '<div class="flex items-center gap-2 mb-2">';
+                    html += '<svg class="w-4 h-4" style="color:#cc8566;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>';
+                    html += '<span class="text-sm font-medium" style="color:#a69480;">执行日志</span>';
+                    if (state.isExecuting) {
+                        html += '<div class="spinner" style="width:14px;height:14px;border-width:2px;"></div>';
+                    }
+                    html += '</div>';
+                    html += '<pre class="text-sm overflow-auto" style="max-height:300px;color:#abb2bf;font-family:JetBrains Mono,monospace;">' + esc(state.executionLogs.join('')) + '</pre>';
+                    html += '</div>';
+                }
+                html += '</div>';
+            }
+            html += '</div>';
+            area.innerHTML = html;
+            document.querySelectorAll('pre code').forEach(function(b) { hljs.highlightElement(b); });
+        }
+    }
+
+    init();
+    </script>
+</body>
+</html>
