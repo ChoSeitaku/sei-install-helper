@@ -366,7 +366,7 @@ function PlansManager() {
             
             <div className="mt-4 p-4 bg-slate-900/50 rounded-xl max-h-48 overflow-auto">
               <ReactMarkdown className="prose prose-invert prose-sm max-w-none">
-                {plan.plan_content.substring(0, 500)}...
+                {plan.plan_content.substring(0, 500) + '...'}
               </ReactMarkdown>
             </div>
           </div>

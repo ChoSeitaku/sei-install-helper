@@ -662,9 +662,12 @@ async def get_stats(db=Depends(get_db)):
 
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "zhuangle2024")
 
+class LoginRequest(BaseModel):
+    password: str
+
 @app.post("/api/admin/login")
-async def admin_login(password: str = ""):
-    if password == ADMIN_PASSWORD:
+async def admin_login(req: LoginRequest):
+    if req.password == ADMIN_PASSWORD:
         return {"token": hashlib.sha256(ADMIN_PASSWORD.encode()).hexdigest()}
     raise HTTPException(401, "Wrong password")
 
